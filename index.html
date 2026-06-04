@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generatore Barcode PDF (A6 Mobile)</title>
+    <title>Generatore Barcode PDF (A6 Full Screen)</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
@@ -56,13 +56,13 @@
             border-radius: 8px;
             resize: none;
             font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 15px; /* Evita lo zoom automatico su iOS */
+            font-size: 15px;
             background-color: #f8fafc;
         }
 
         textarea:focus {
             outline: none;
-            border-color: #3b82f6;
+            border-color: #2563eb;
             background-color: #fff;
         }
 
@@ -90,49 +90,50 @@
             display: none;
         }
 
-        /* Configurazione pagina A6 Orizzontale (148mm x 105mm) */
+        /* Pagina A6 Orizzontale (148mm x 105mm) ottimizzata senza margini interni */
         .pdf-page {
             width: 148mm;
             height: 105mm;
-            box-sizing: border-box;
-            display: block;
             position: relative;
-            page-break-after: always;
             background-color: #ffffff;
             overflow: hidden;
+            margin: 0;
+            padding: 0;
         }
 
+        /* Contenitore per far occupare al barcode tutto lo spazio possibile */
         .barcode-container {
-            width: 100%;
-            height: 100%;
+            width: 148mm;
+            height: 93mm; /* Lascia lo spazio millimetrico solo in basso per il footer */
             display: block;
             text-align: center;
-            padding-top: 15mm; /* Lascia spazio sopra e sotto */
+            padding: 5mm 5mm 0 5mm;
         }
 
+        /* Forza il barcode vettoriale ad estendersi al massimo dei limiti della pagina */
         .barcode-img {
-            max-width: 90%;
-            height: auto;
-            max-height: 55mm; /* Impedisce al barcode di toccare il footer */
+            width: 100%;
+            height: 100%;
         }
 
         .page-footer {
             position: absolute;
-            bottom: 8mm;
+            bottom: 3mm;
             left: 0;
             right: 0;
             text-align: center;
-            font-size: 11px;
+            font-size: 10px;
             color: #64748b;
             font-family: Arial, sans-serif;
             font-weight: bold;
+            line-height: 1;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Generatore Barcode (A6)</h1>
+    <h1>Generatore Barcode (A6 Full)</h1>
     <label for="codici">Codici (uno per riga):</label>
     <textarea id="codici" placeholder="Inserisci i codici qui..."></textarea>
     <button id="btn-generate">Genera PDF A6</button>
@@ -166,11 +167,12 @@
             const barcodeContainer = document.createElement('div');
             barcodeContainer.className = 'barcode-container';
 
-            const img = document.createElement('img');
-            img.className = 'barcode-img';
-            img.id = `barcode-${index}`;
+            // Usiamo il formato <svg> per una resa a tutto schermo definita e non sgranata
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.className = 'barcode-img';
+            svg.id = `barcode-${index}`;
 
-            barcodeContainer.appendChild(img);
+            barcodeContainer.appendChild(svg);
             pageDiv.appendChild(barcodeContainer);
 
             const footer = document.createElement('div');
@@ -181,13 +183,14 @@
             pdfContent.appendChild(pageDiv);
 
             try {
-                // Configurazione barcode ottimizzata per A6 orizzontale
+                // Generazione del codice con parametri massimizzati per l'A6
                 JsBarcode(`#barcode-${index}`, codice, {
                     format: "CODE128",
-                    width: 2.5,        // Ottimo compromesso per la densità su A6
-                    height: 75,        // Altezza proporzionata all'A6
-                    displayValue: true,
-                    fontSize: 16,
+                    width: 4,           // Spessore delle linee aumentato per coprire i lati
+                    height: 120,        // Altezza aumentata per coprire la pagina verticalmente
+                    displayValue: true, // Mostra il testo leggibile sotto le linee
+                    fontSize: 18,
+                    margin: 0,
                     background: "#ffffff"
                 });
             } catch (error) {
@@ -198,10 +201,12 @@
         // Opzioni specifiche per A6 Orizzontale (Landscape)
         const opt = {
             margin:       0,
-            filename:     'barcodes_a6.pdf',
+            filename:     'barcodes_a6_full.pdf',
             image:        { type: 'jpeg', quality: 1.0 },
-            html2canvas:  { scale: 3, useCORS: true, logging: false }, // Scala 3 per massima nitidezza dello schermo
-            jsPDF:        { unit: 'mm', format: [148, 105], orientation: 'landscape' }
+            html2canvas:  { scale: 3, useCORS: true, logging: false }, // Mantiene il testo e le linee cristalline
+            jsPDF:        { unit: 'mm', format: [148, 105], orientation: 'landscape' },
+            // Gestione nativa dei tagli di pagina per evitare le pagine vuote
+            pagebreak:    { mode: ['css', 'after'], before: '.pdf-page', avoid: '.pdf-page' }
         };
 
         pdfContent.style.display = 'block';
