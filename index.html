@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generatore Barcode PDF (A6 Mobile)</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin-top: 0;
+            color: #0f172a;
+            text-align: center;
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+            color: #334155;
+            font-size: 14px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            resize: none;
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 15px; /* Evita lo zoom automatico su iOS */
+            background-color: #f8fafc;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: #fff;
+        }
+
+        button {
+            width: 100%;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: background-color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button:hover, button:active {
+            background-color: #1d4ed8;
+        }
+
+        /* Area nascosta usata solo per il PDF */
+        #pdf-content {
+            display: none;
+        }
+
+        /* Configurazione pagina A6 Orizzontale (148mm x 105mm) */
+        .pdf-page {
+            width: 148mm;
+            height: 105mm;
+            box-sizing: border-box;
+            display: block;
+            position: relative;
+            page-break-after: always;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+
+        .barcode-container {
+            width: 100%;
+            height: 100%;
+            display: block;
+            text-align: center;
+            padding-top: 15mm; /* Lascia spazio sopra e sotto */
+        }
+
+        .barcode-img {
+            max-width: 90%;
+            height: auto;
+            max-height: 55mm; /* Impedisce al barcode di toccare il footer */
+        }
+
+        .page-footer {
+            position: absolute;
+            bottom: 8mm;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: #64748b;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Generatore Barcode (A6)</h1>
+    <label for="codici">Codici (uno per riga):</label>
+    <textarea id="codici" placeholder="Inserisci i codici qui..."></textarea>
+    <button id="btn-generate">Genera PDF A6</button>
+</div>
+
+<div id="pdf-content"></div>
+
+<script>
+    document.getElementById('btn-generate').addEventListener('click', function () {
+        const textarea = document.getElementById('codici');
+        const pdfContent = document.getElementById('pdf-content');
+        
+        pdfContent.innerHTML = '';
+
+        const linee = textarea.value.split('\n')
+            .map(linea => linea.trim())
+            .filter(linea => linea.length > 0);
+
+        if (linee.length === 0) {
+            alert('Inserisci almeno un codice.');
+            return;
+        }
+
+        // Creazione delle pagine A6
+        linee.forEach((codice, index) => {
+            const numeroPagina = index + 1;
+
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'pdf-page';
+
+            const barcodeContainer = document.createElement('div');
+            barcodeContainer.className = 'barcode-container';
+
+            const img = document.createElement('img');
+            img.className = 'barcode-img';
+            img.id = `barcode-${index}`;
+
+            barcodeContainer.appendChild(img);
+            pageDiv.appendChild(barcodeContainer);
+
+            const footer = document.createElement('div');
+            footer.className = 'page-footer';
+            footer.innerText = `${numeroPagina} / ${linee.length}`;
+            
+            pageDiv.appendChild(footer);
+            pdfContent.appendChild(pageDiv);
+
+            try {
+                // Configurazione barcode ottimizzata per A6 orizzontale
+                JsBarcode(`#barcode-${index}`, codice, {
+                    format: "CODE128",
+                    width: 2.5,        // Ottimo compromesso per la densità su A6
+                    height: 75,        // Altezza proporzionata all'A6
+                    displayValue: true,
+                    fontSize: 16,
+                    background: "#ffffff"
+                });
+            } catch (error) {
+                console.error(`Errore sul codice: ${codice}`, error);
+            }
+        });
+
+        // Opzioni specifiche per A6 Orizzontale (Landscape)
+        const opt = {
+            margin:       0,
+            filename:     'barcodes_a6.pdf',
+            image:        { type: 'jpeg', quality: 1.0 },
+            html2canvas:  { scale: 3, useCORS: true, logging: false }, // Scala 3 per massima nitidezza dello schermo
+            jsPDF:        { unit: 'mm', format: [148, 105], orientation: 'landscape' }
+        };
+
+        pdfContent.style.display = 'block';
+
+        html2pdf().set(opt).from(pdfContent).save().then(() => {
+            pdfContent.style.display = 'none';
+        }).catch(err => {
+            console.error(err);
+            pdfContent.style.display = 'none';
+        });
+    });
+</script>
+
+</body>
+</html>
